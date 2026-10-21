@@ -40,21 +40,50 @@ try:
 except Exception:
     pass
 
+MODEL_NAME = 'face_detection_yunet_2023mar.onnx'
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_MODEL = os.path.join(HERE, 'models', 'face_detection_yunet_2023mar.onnx')
-DET = DEFAULT_MODEL
+
+
+def model_candidates(path=''):
+    """按优先级列出可能的模型路径。
+
+    顺序：--model 显式指定 → 环境变量 → 源码仓库 models/ →
+    pip 安装后的 share/ 数据目录 → 当前工作目录 models/
+    """
+    if path:
+        return [path]
+    cands = []
+    env = os.environ.get('FACE_CROP_MODEL')
+    if env:
+        cands.append(env)
+    cands.append(os.path.join(HERE, 'models', MODEL_NAME))
+    try:
+        import sysconfig
+        cands.append(os.path.join(sysconfig.get_path('data'), 'share',
+                                  'face-crop-from-video', 'models', MODEL_NAME))
+    except Exception:
+        pass
+    cands.append(os.path.join(os.getcwd(), 'models', MODEL_NAME))
+    return cands
 
 
 def resolve_model(path=''):
-    """返回可用的 YuNet 模型路径；缺失时给出下载提示。"""
-    cand = path or DET
-    if os.path.isfile(cand):
-        return cand
+    """返回第一个存在的模型路径；都找不到时给出下载提示。"""
+    cands = model_candidates(path)
+    for c in cands:
+        if os.path.isfile(c):
+            return c
     raise SystemExit(
-        '找不到人脸检测模型: %s\n'
-        '请从 OpenCV Zoo 下载 face_detection_yunet_2023mar.onnx 放到 models/ 目录，'
-        '或用 --model 指定路径。\n'
-        'https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet' % cand)
+        '找不到人脸检测模型 %s\n'
+        '可用以下任一方式解决：\n'
+        '  1) 从 OpenCV Zoo 下载后放到 models/ 目录\n'
+        '     https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet\n'
+        '  2) 用 --model 指定路径\n'
+        '  3) 设置环境变量 FACE_CROP_MODEL\n'
+        '已尝试：%s' % (MODEL_NAME, '\n         '.join(cands)))
+
+
+DET = os.path.join(HERE, 'models', MODEL_NAME)
 
 
 def log(*a):
