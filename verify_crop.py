@@ -39,6 +39,23 @@ def load_module(path, name='crop_mod'):
     return m
 
 
+def load_crop_module():
+    """优先按包导入（pip 安装场景），否则回退到同目录的 crop_faces.py。"""
+    try:
+        import crop_faces as mod
+        print('使用模块: crop_faces (已安装)')
+        return mod
+    except ImportError:
+        pass
+    script = find_crop_script()
+    if not script:
+        print('❌ 没找到裁剪模块：既没有安装 face-crop-from-video，同目录也没有 crop_faces.py')
+        print('   当前目录:', HERE)
+        sys.exit(1)
+    print(f'使用脚本: {os.path.basename(script)}')
+    return load_module(script)
+
+
 def main():
     target = 0.55
     size = 1024
@@ -49,13 +66,7 @@ def main():
         if a == '--size' and i + 1 < len(argv):
             size = int(argv[i + 1])
 
-    script = find_crop_script()
-    if not script:
-        print('❌ 同目录下没找到裁剪脚本（文件名应含 crop）')
-        print('   当前目录:', HERE)
-        sys.exit(1)
-    print(f'使用脚本: {os.path.basename(script)}')
-    m = load_module(script)
+    m = load_crop_module()
 
     files = [a for a in argv if not a.startswith('--') and os.path.exists(a)]
     if not files:
