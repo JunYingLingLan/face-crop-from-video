@@ -4,6 +4,12 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.eggs/
+
+# ---- 构建产物 ----
+build/
+dist/
+*.whl
 
 # ---- 运行输出 ----
 output/
