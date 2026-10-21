@@ -1,5 +1,9 @@
 # face-crop-from-video
 
+![Python](https://img.shields.io/badge/python-3.8%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![OpenCV](https://img.shields.io/badge/OpenCV-4.8%2B-5C3EE8)
+
 > 从**视频**里解帧、检测人脸、按「脸占画面高度比例」裁出头肩像，输出 1024² 样本图。
 > 用于构建人脸数据集（CV 训练/微调素材预处理）——不依赖 ffmpeg，只用 OpenCV。
 
@@ -24,20 +28,51 @@
 
 ## 安装
 
+### 方式一：装成命令行工具（推荐）
+
+```bash
+pip install git+https://github.com/JunYingLingLan/face-crop-from-video
+crop-faces --help
+```
+
+装好后在任何目录都能直接调用；检测模型会随包安装到 `<prefix>/share/face-crop-from-video/models/`，
+**不需要另外下载模型**。已经 clone 到本地的话，`pip install .` 效果相同。
+
+安装后得到两个命令：
+
+| 命令 | 作用 |
+|---|---|
+| `crop-faces` | 主程序：解帧 → 检测 → 裁剪 → 过滤 → 导出 |
+| `verify-crop` | 自检：用静态图片验证裁剪数学 |
+
+### 方式二：直接当脚本用（不安装）
+
 ```bash
 pip install -r requirements.txt
+python crop_faces.py --help
 ```
 
 - 需要 `opencv-python >= 4.8`（`cv2.FaceDetectorYN` 从 4.5.4 起提供，4.8 起接口稳定）
-- 本仓库已附带检测模型 `models/face_detection_yunet_2023mar.onnx`（来自 [OpenCV Zoo](https://github.com/opencv/opencv_zoo)，Apache-2.0），开箱即用；也可用 `--model` 指定自己的模型
+- 仓库自带检测模型 `models/face_detection_yunet_2023mar.onnx`（来自 [OpenCV Zoo](https://github.com/opencv/opencv_zoo)，Apache-2.0）；也可用 `--model` 指定自己的模型
+- 模型查找顺序：`--model` → 环境变量 `FACE_CROP_MODEL` → 仓库内 `models/` → pip 安装的 `share/` → 当前目录 `models/`
+
+### 作为库调用
+
+```python
+from crop_faces import detect_face, crop_head_shoulder
+
+box = detect_face(frame)                                  # -> (x, y, w, h) 或 None
+crop, face_h = crop_head_shoulder(frame, box, 1024, 0.55)  # -> (正方形裁剪图, 输出脸高)
+```
 
 ### 已验证
 
-Windows 11 + Python 3.12 + OpenCV 5.0 实跑通过：用 MJPG/AVI 合成视频（60 帧、轻微平移与亮度扰动）跑完整流程，
-导出 6–7 张样本，`verify_crop.py` 判定全部合格——输出脸高 563 px（= 1024 × 0.55，占比 55.0%），
-`_meta.json` 逐帧记录源脸高、清晰度与亮度。
+- **运行**：Windows 11 + Python 3.12 + OpenCV 5.0，用 MJPG/AVI 合成视频（60 帧、轻微平移与亮度扰动）跑完整流程，导出 6–7 张，`verify_crop.py` 判定全部合格（输出脸高 563 px = 1024 × 0.55，占比 55.0%），`_meta.json` 逐帧记录源脸高、清晰度与亮度。
+- **打包**：setuptools 构建出 `face_crop_from_video-0.1.0-py3-none-any.whl`，内含两个模块、`entry_points.txt` 与随包模型；模拟安装（本地无 `models/`）后模型能从 `share/` 分支正确解析。
 
 ## 用法
+
+> 下面用 `python crop_faces.py` 演示；如果用 `pip install` 装过，把前缀换成 `crop-faces` 即可。
 
 ### ① 先扫描，估算产出
 
@@ -132,6 +167,11 @@ python verify_crop.py img/a.jpg img/b.jpg --target-face 0.55 --size 1024
 2. **编码是不是 H.265 / AV1？** 多数 OpenCV 的 FFmpeg 构建只带 H.264 解码，先转成 H.264 MP4 再试；
 3. **换官方 `opencv-python` wheel**（自带 FFmpeg），避免使用裁剪过的自定义构建。
 
+**装完了却提示 `crop-faces: command not found`（或 Windows 下“不是内部或外部命令”）？**
+
+pip 生成的脚本目录不在 PATH 里。Windows 通常是 `%APPDATA%\Python\Python3XX\Scripts`，把它加进 PATH；
+或者绕开 PATH 直接用模块方式调用：`python -m crop_faces --help`。
+
 **导出数量远少于候选数？**
 
 正常。检出率通常 40%–80%，再叠加最小脸高、清晰度、亮度、去重四道过滤。先跑 `--scan-only` 看候选数，再调 `--every`。
@@ -146,7 +186,7 @@ python verify_crop.py img/a.jpg img/b.jpg --target-face 0.55 --size 1024
 
 ## 已知限制
 
-- DHT 之类的时序问题与本项目无关；这里的检测只处理彩色帧（不支持灰度/深度视频）
+- 只处理彩色帧，不支持灰度/深度视频
 - 多人画面只保留**最大人脸**，不做人脸聚类
 - 侧脸、遮挡、强逆光会漏检（YuNet 的检测阈值固定 0.5）
 - 逐帧 `grab()` + 抽样 `retrieve()`，长视频耗时主要花在解码上，可先用 `--every` 粗采样
