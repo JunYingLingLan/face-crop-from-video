@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "face-crop-from-video"
+version = "0.1.0"
+description = "从视频按人脸框裁头肩像数据集：OpenCV 解帧 + YuNet 检测 + 构图/清晰度/去重过滤"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [{ name = "梁景皓", email = "a1659898947@outlook.com" }]
+keywords = ["opencv", "face-detection", "dataset", "video", "yunet", "face-crop"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+dependencies = [
+    "opencv-python>=4.8",
+    "numpy>=1.24",
+]
+
+[project.urls]
+Homepage = "https://github.com/JunYingLingLan/face-crop-from-video"
+Source = "https://github.com/JunYingLingLan/face-crop-from-video"
+
+[project.scripts]
+crop-faces = "crop_faces:main"
+verify-crop = "verify_crop:main"
+
+[tool.setuptools]
+py-modules = ["crop_faces", "verify_crop"]
+
+# YuNet 检测模型随包安装到 <prefix>/share/face-crop-from-video/models/，
+# crop_faces.resolve_model() 会在该路径自动查找，无需手动下载。
+[tool.setuptools.data-files]
+"share/face-crop-from-video/models" = ["models/face_detection_yunet_2023mar.onnx"]
